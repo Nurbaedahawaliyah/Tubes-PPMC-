@@ -200,7 +200,7 @@ void print_bestRoute(Node *cities[], Ant* ant, int numCities) {
 }
 
 // Algoritma Ant Colony Optimization untuk mencari rute terbaik
-void ant_colony_optimization(Node* cities[], int numCities, double distances[numCities][numCities], double pheromones[numCities][numCities], int numAnts, double alpha, double beta, double evaporation_rate, int max_iterations) {
+void ant_colony_optimization(Node* cities[], int numCities, double distances[numCities][numCities], double pheromones[numCities][numCities], int numAnts, double alpha, double beta, double evaporation_rate, int max_iterations, int startIndex) {
     // Inisialisasi semut
     Ant ants[numAnts];
     for (int i = 0; i < numAnts; i++) {
@@ -211,10 +211,9 @@ void ant_colony_optimization(Node* cities[], int numCities, double distances[num
     for (int iter = 0; iter < max_iterations; iter++) {
         // Perbarui jejak setiap semut
         for (int i = 0; i < numAnts; i++) {
-            // Mulai dari kota acak
-            int start_city = rand() % numCities;
-            ants[i].tour[0] = start_city;
-            ants[i].visited[start_city] = 1;
+            // Mulai dari kota awal yang dimasukkan pengguna
+            ants[i].tour[0] = startIndex;
+            ants[i].visited[startIndex] = 1;
             ants[i].tour_length = 1;
 
             // Lanjutkan perjalanan semut
@@ -327,7 +326,7 @@ int main(void) {
 
     // Jalankan algoritma Ant Colony Optimization dan hitung waktu eksekusi
     clock_t start_time = clock();
-    ant_colony_optimization(cities, jumlah_kota, distances, pheromones, numAnts, alpha, beta, evaporation_rate, max_iterations);
+    ant_colony_optimization(cities, jumlah_kota, distances, pheromones, numAnts, alpha, beta, evaporation_rate, max_iterations, startIndex);
     clock_t end_time = clock();
 
     // Hitung waktu eksekusi
