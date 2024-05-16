@@ -6,11 +6,18 @@
 
 #define MAX_LEN_STRING 255
 #define MAX_CITIES 100
+#define M_PI 3.14159265358979323846
+#define ALPHA 1.0
+#define BETA 2.0
+#define RHO 0.5
+#define Q 100.0
 #define NUM_ANTS 10
-#define ALPHA 1.0 // Pengaruh pheromone
-#define BETA 2.0  // Pengaruh visibilitas (jarak)
-#define RHO 0.1   // Tingkat penguapan pheromone
-#define Q 100.0   // Jumlah pheromone yang dilepaskan oleh semut
+#define MAX_ITERATIONS 100
+
+typedef struct {
+    int tour[MAX_CITIES];
+    double tour_length;
+} Ant;
 
 // Definisi struct Node untuk menyimpan data kota
 typedef struct Node {
@@ -19,13 +26,6 @@ typedef struct Node {
     double bujur;
     struct Node* next;
 } Node;
-
-// Definisi struct Ant untuk menyimpan status semut
-typedef struct Ant {
-    int tour[MAX_CITIES]; // Tur semut
-    int visited[MAX_CITIES]; // Status kunjungan
-    double tour_length; // Panjang tur
-} Ant;
 
 // Fungsi untuk menambahkan node baru ke linked list
 int add(Node **head, double data_lintang, double data_bujur, char nama[]) {
@@ -132,7 +132,6 @@ void make_distanceMatrices(Node *cities[], int jumlah_kota, double distances[jum
     }
 }
 
-
 // Fungsi untuk menemukan indeks kota berdasarkan nama kota
 int find_city_index(Node* cities[], int numCities, char* cityName) {
     for (int i = 0; i < numCities; i++) {
@@ -143,96 +142,104 @@ int find_city_index(Node* cities[], int numCities, char* cityName) {
     return -1;
 }
 
-// Fungsi untuk inisialisasi semut
-void init_ants(Ant ants[], int numCities) {
-    for (int i = 0; i < NUM_ANTS; i++) {
-        memset(ants[i].visited, 0, sizeof(ants[i].visited));
+// Fungsi untuk mencetak rute terbaik
+void print_bestRoute(Node *cities[], int bestPath[], int jumlah_kota, double minCost) {
+    printf("Best route found:\n");
+    for (int i = 0; i <= jumlah_kota; i++) {
+        printf("%s", cities[bestPath[i]]->nama_kota);
+        if (i < jumlah_kota) {
+            printf(" -> ");
+        }
+    }
+    printf("\nBest route distance: %lf km\n", minCost);
+}
+
+// Inisialisasi semut
+void initialize_ants(Ant ants[], int numAnts, int numCities) {
+    for (int i = 0; i < numAnts; i++) {
+        for (int j = 0; j < numCities; j++) {
+            ants[i].tour[j] = -1;
+        }
         ants[i].tour_length = 0.0;
     }
 }
 
-// Fungsi untuk memilih kota berikutnya berdasarkan aturan ACO
-int select_next_city(Ant *ant, int numCities, double pheromones[][MAX_CITIES], double distances[][MAX_CITIES], double alpha, double beta) {
-    double total = 0.0;
-    double probabilities[numCities];
-
-    // Hitung total probabilitas
-    for (int i = 0; i < numCities; i++) {
-        if (ant->visited[i] == 0) {
-            total += pow(pheromones[ant->tour[numCities - 1]][i], alpha) * pow(1.0 / distances[ant->tour[numCities - 1]][i], beta);
-        }
-    }
-
-    // Hitung probabilitas untuk setiap kota yang belum dikunjungi
-    for (int i = 0; i < numCities; i++) {
-        if (ant->visited[i] == 0) {
-            probabilities[i] = (pow(pheromones[ant->tour[numCities - 1]][i], alpha) * pow(1.0 / distances[ant->tour[numCities - 1]][i], beta)) / total;
-        } else {
-            probabilities[i] = 0.0;
-        }
-    }
-
-    // Pilih kota berikutnya berdasarkan probabilitas
-    double r = (double)rand() / RAND_MAX;
-    double sum = 0.0;
-    for (int i = 0; i < numCities; i++) {
-        sum += probabilities[i];
-        if (sum >= r) {
-            return i;
-        }
-    }
-    // Jika gagal memilih, kota terakhir yang dipilih
-    for (int i = 0; i < numCities; i++) {
-        if (ant->visited[i] == 0) {
-            return i;
-        }
-    }
-    return -1; // Jika semua kota telah dikunjungi
-}
-
-// Fungsi untuk menemukan rute terpendek dengan menggunakan algoritma ACO
-void find_shortest_path(Node *cities[], int numCities, double distances[][MAX_CITIES], double pheromones[][MAX_CITIES]) {
-    srand(time(NULL)); // Inisialisasi seed untuk random number generator
-
+// Fungsi untuk menjalankan algoritma ACO
+// Fungsi untuk menjalankan algoritma ACO
+void run_ACO(Node *cities[], int numCities, double distances[numCities][numCities]) {
     Ant ants[NUM_ANTS];
+    double pheromones[numCities][numCities];
     double best_tour_length = INFINITY;
-    int best_tour[MAX_CITIES];
+    int best_tour[numCities];
 
-    for (int iteration = 0; iteration < 1000; iteration++) {
-        init_ants(ants, numCities);
+    // Inisialisasi jejak feromon awal
+    for (int i = 0; i < numCities; i++) {
+        for (int j = 0; j < numCities; j++) {
+            pheromones[i][j] = 1.0;
+        }
+    }
 
-        // Setiap semut memilih kota secara berurutan
-        for (int i = 0; i < numCities - 1; i++) {
-            for (int j = 0; j < NUM_ANTS; j++) {
-                int next_city = select_next_city(&ants[j], numCities, pheromones, distances, ALPHA, BETA);
-                ants[j].visited[next_city] = 1;
-                ants[j].tour[i + 1] = next_city;
-                ants[j].tour_length += distances[ants[j].tour[i]][next_city];
+    for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
+        // Inisialisasi semut
+        initialize_ants(ants, NUM_ANTS, numCities);
+
+        // Masing-masing semut membuat tur
+        for (int ant = 0; ant < NUM_ANTS; ant++) {
+            int start_city = rand() % numCities; // Memilih kota awal secara acak
+            ants[ant].tour[0] = start_city;
+
+            for (int i = 1; i < numCities; i++) {
+                // Memilih kota berikutnya berdasarkan probabilitas
+                int current_city = ants[ant].tour[i - 1];
+                int next_city = -1;
+                double roulette = (double)rand() / RAND_MAX;
+                double total_prob = 0.0;
+
+                for (int j = 0; j < numCities; j++) {
+                    if (j != current_city && ants[ant].tour[j] == -1) {
+                        double prob = pow(pheromones[current_city][j], ALPHA) * pow(1.0 / distances[current_city][j], BETA);
+                        total_prob += prob;
+                        if (roulette <= total_prob) {
+                            next_city = j;
+                            break;
+                        }
+                    }
+                }
+                ants[ant].tour[i] = next_city;
             }
+
+            // Hitung panjang tur semut
+            ants[ant].tour_length = 0.0;
+            for (int i = 0; i < numCities - 1; i++) {
+                ants[ant].tour_length += distances[ants[ant].tour[i]][ants[ant].tour[i + 1]];
+            }
+            ants[ant].tour_length += distances[ants[ant].tour[numCities - 1]][ants[ant].tour[0]]; // Kembali ke kota awal
         }
 
-        // Update pheromones
-        for (int i = 0; i < NUM_ANTS; i++) {
-            ants[i].tour_length += distances[ants[i].tour[numCities - 1]][ants[i].tour[0]]; // Kembali ke kota awal
-            if (ants[i].tour_length < best_tour_length) {
-                best_tour_length = ants[i].tour_length;
-                memcpy(best_tour, ants[i].tour, sizeof(best_tour));
-            }
-            for (int j = 0; j < numCities - 1; j++) {
-                pheromones[ants[i].tour[j]][ants[i].tour[j + 1]] += Q / ants[i].tour_length;
-                pheromones[ants[i].tour[j + 1]][ants[i].tour[j]] += Q / ants[i].tour_length;
-            }
-        }
-
-        // Penguapan pheromone
+        // Memperbarui jejak feromon
         for (int i = 0; i < numCities; i++) {
             for (int j = 0; j < numCities; j++) {
                 pheromones[i][j] *= (1.0 - RHO);
             }
         }
+
+        // Memperbarui jejak feromon berdasarkan panjang tur terbaik
+        for (int ant = 0; ant < NUM_ANTS; ant++) {
+            if (ants[ant].tour_length < best_tour_length) {
+                best_tour_length = ants[ant].tour_length;
+                memcpy(best_tour, ants[ant].tour, sizeof(int) * numCities);
+            }
+
+            for (int i = 0; i < numCities - 1; i++) {
+                pheromones[ants[ant].tour[i]][ants[ant].tour[i + 1]] += Q / ants[ant].tour_length;
+                pheromones[ants[ant].tour[i + 1]][ants[ant].tour[i]] += Q / ants[ant].tour_length;
+            }
+            pheromones[ants[ant].tour[numCities - 1]][ants[ant].tour[0]] += Q / ants[ant].tour_length;
+            pheromones[ants[ant].tour[0]][ants[ant].tour[numCities - 1]] += Q / ants[ant].tour_length;
+        }
     }
 
-    // Print best route
+    // Cetak tur terbaik
     printf("Best route found:\n");
     for (int i = 0; i < numCities; i++) {
         printf("%s", cities[best_tour[i]]->nama_kota);
@@ -242,6 +249,7 @@ void find_shortest_path(Node *cities[], int numCities, double distances[][MAX_CI
     }
     printf("\nBest route distance: %lf km\n", best_tour_length);
 }
+
 
 // Fungsi utama
 int main(void) {
@@ -259,19 +267,11 @@ int main(void) {
     make_cities_arrOfNode(daftar_kota, cities, numCities);
 
     // Membuat matriks jarak antar kota
-    double distances[MAX_CITIES][MAX_CITIES];
+    double distances[MAX_LEN_STRING][MAX_LEN_STRING];
     make_distanceMatrices(cities, numCities, distances);
 
-    // Matriks pheromones untuk ACO
-    double pheromones[MAX_CITIES][MAX_CITIES];
-    for (int i = 0; i < numCities; i++) {
-        for (int j = 0; j < numCities; j++) {
-            pheromones[i][j] = 0.01; // Inisialisasi dengan nilai kecil
-        }
-    }
-
-    // Temukan rute terpendek dengan ACO
-    find_shortest_path(cities, numCities, distances, pheromones);
+    // Implementasi algoritma ACO
+    run_ACO(cities, numCities, distances);
 
     return 0;
 }
