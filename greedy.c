@@ -3,12 +3,12 @@
 #include <math.h>
 #include <float.h>
 #include <string.h>
+#include <time.h>
 
 #define MAX_LEN_STRING 255
 #define EARTH_RADIUS 6371.0
 #define M_PI 3.14159265358979323846
 
-// Structure to hold city information
 typedef struct Node {
     char nama_kota[MAX_LEN_STRING];
     double bujur;
@@ -18,18 +18,11 @@ typedef struct Node {
 
 int add(Node **head, double data_lintang, double data_bujur, char nama[]) {
     Node *temp = (Node*)malloc(sizeof(Node));
-
     temp->bujur = data_bujur;
     temp->lintang = data_lintang;
     strcpy(temp->nama_kota, nama);
-
-    if (*head == NULL) {
-        temp->next = NULL;
-        *head = temp;
-    } else {
-        temp->next = *head;
-        *head = temp;
-    }
+    temp->next = *head;
+    *head = temp;
     return 0;
 }
 
@@ -45,17 +38,17 @@ Node* input_file() {
     Node *Linked_list_kota = NULL;
 
     char file_name[MAX_LEN_STRING];
-    printf("Masukkan File Map: ");
+    printf("Enter list of cities file name: ");
     scanf("%s", file_name);
 
     FILE* stream = fopen(file_name, "r");
     if (stream == NULL) {
-        printf("File tidak ditemukan\n");
+        printf("File not found\n");
         return NULL;
     }
 
     char line[MAX_LEN_STRING];
-    while (fgets(line, MAX_LEN_STRING, stream)) {
+    while (fgets(line, sizeof(line), stream)) {
         char kota_temp[MAX_LEN_STRING];
         double lintang, bujur;
 
@@ -67,24 +60,21 @@ Node* input_file() {
     return Linked_list_kota;
 }
 
-// Convert degrees to radians
 double toRadians(double degree) {
     return degree * M_PI / 180.0;
 }
 
-// Calculate distance between two points using the haversine formula
 double haversine(double lat1, double lon1, double lat2, double lon2) {
     double dLat = toRadians(lat2 - lat1);
     double dLon = toRadians(lon2 - lon1);
     lat1 = toRadians(lat1);
     lat2 = toRadians(lat2);
 
-    double a = pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2);
+    double a = pow(sin(dLat / 2), 2) + cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2);
     double c = 2 * asin(sqrt(a));
     return EARTH_RADIUS * c;
 }
 
-// Find the nearest unvisited city
 int findNearestCity(Node cities[], int currentCity, int n, int visited[]) {
     int nearestCity = -1;
     double minDistance = DBL_MAX;
@@ -101,7 +91,6 @@ int findNearestCity(Node cities[], int currentCity, int n, int visited[]) {
     return nearestCity;
 }
 
-// Solve the TSP problem using a greedy approach
 double solveTSP(Node cities[], int n, int startCity, int *route) {
     int *visited = (int *)calloc(n, sizeof(int));
     double totalDistance = 0.0;
@@ -127,7 +116,6 @@ double solveTSP(Node cities[], int n, int startCity, int *route) {
     return totalDistance;
 }
 
-// Find the best starting city for TSP
 void findBestStartingCity(Node cities[], int n, int *bestCity, double *bestDistance, int *bestRoute) {
     double minDistance = DBL_MAX;
     int *currentRoute = (int *)malloc(n * sizeof(int));
@@ -145,18 +133,6 @@ void findBestStartingCity(Node cities[], int n, int *bestCity, double *bestDista
     free(currentRoute);
 }
 
-// Write the route to an output file
-void writeRouteToFile(Node cities[], int n, int startCity, double totalDistance, int *route, FILE *outputFile) {
-    fprintf(outputFile, "Best starting city: %s\n", cities[startCity].nama_kota);
-    fprintf(outputFile, "Shortest route: ");
-    for (int i = 0; i < n; i++) {
-        fprintf(outputFile, "%s -> ", cities[route[i]].nama_kota);
-    }
-    fprintf(outputFile, "%s\n", cities[startCity].nama_kota);
-    fprintf(outputFile, "Total distance: %.2f km\n", totalDistance);
-}
-
-// Main function
 int main() {
     Node *cities_list = input_file();
     if (cities_list == NULL) return 1;
@@ -178,7 +154,7 @@ int main() {
     }
 
     char startCityName[MAX_LEN_STRING];
-    printf("Masukkan kota pertama yang ingin dikunjungi: ");
+    printf("Enter starting point: ");
     scanf("%s", startCityName);
 
     int startCityIndex = -1;
@@ -190,7 +166,7 @@ int main() {
     }
 
     if (startCityIndex == -1) {
-        printf("Kota pertama yang dimasukkan tidak ditemukan dalam list.\n");
+        printf("Starting city not found in the list.\n");
         free(cities);
         return 1;
     }
@@ -199,19 +175,19 @@ int main() {
     double bestDistance;
     int *bestRoute = (int *)malloc(n * sizeof(int));
 
+    clock_t start = clock();
     findBestStartingCity(cities, n, &bestCity, &bestDistance, bestRoute);
+    clock_t end = clock();
+    double timeElapsed = ((double)(end - start)) / CLOCKS_PER_SEC;
 
-    FILE *outputFile = fopen("output.txt", "w");
-    if (outputFile == NULL) {
-        printf("Tidak dapat membuka file output.\n");
-        free(cities);
-        free(bestRoute);
-        return 1;
+    printf("Best route found:\n");
+    for (int i = 0; i < n; i++) {
+        printf("%s -> ", cities[bestRoute[i]].nama_kota);
     }
+    printf("%s\n", cities[bestRoute[0]].nama_kota);
+    printf("Best route distance: %.5f km\n", bestDistance);
+    printf("Time elapsed: %.10f s\n", timeElapsed);
 
-    writeRouteToFile(cities, n, bestCity, bestDistance, bestRoute, outputFile);
-
-    fclose(outputFile);
     free(cities);
     free(bestRoute);
 
