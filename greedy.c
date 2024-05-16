@@ -116,21 +116,9 @@ double solveTSP(Node cities[], int n, int startCity, int *route) {
     return totalDistance;
 }
 
-void findBestStartingCity(Node cities[], int n, int *bestCity, double *bestDistance, int *bestRoute) {
-    double minDistance = DBL_MAX;
-    int *currentRoute = (int *)malloc(n * sizeof(int));
-
-    for (int i = 0; i < n; i++) {
-        double currentDistance = solveTSP(cities, n, i, currentRoute);
-        if (currentDistance < minDistance) {
-            minDistance = currentDistance;
-            *bestCity = i;
-            *bestDistance = currentDistance;
-            memcpy(bestRoute, currentRoute, n * sizeof(int));
-        }
-    }
-
-    free(currentRoute);
+void findBestStartingCity(Node cities[], int n, int startCityIndex, double *bestDistance, int *bestRoute) {
+    double currentDistance = solveTSP(cities, n, startCityIndex, bestRoute);
+    *bestDistance = currentDistance;
 }
 
 int main() {
@@ -171,12 +159,11 @@ int main() {
         return 1;
     }
 
-    int bestCity;
     double bestDistance;
     int *bestRoute = (int *)malloc(n * sizeof(int));
 
     clock_t start = clock();
-    findBestStartingCity(cities, n, &bestCity, &bestDistance, bestRoute);
+    findBestStartingCity(cities, n, startCityIndex, &bestDistance, bestRoute);
     clock_t end = clock();
     double timeElapsed = ((double)(end - start)) / CLOCKS_PER_SEC;
 
@@ -184,7 +171,7 @@ int main() {
     for (int i = 0; i < n; i++) {
         printf("%s -> ", cities[bestRoute[i]].nama_kota);
     }
-    printf("%s\n", cities[bestRoute[0]].nama_kota);
+    printf("%s\n", cities[startCityIndex].nama_kota);
     printf("Best route distance: %.5f km\n", bestDistance);
     printf("Time elapsed: %.10f s\n", timeElapsed);
 
