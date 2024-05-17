@@ -190,7 +190,10 @@ int main(void) {
 
     char startingCity[MAX_LEN_STRING];
     printf("Enter starting point: ");
-    scanf("%s", startingCity);
+    getchar();  // mengambil karakter newline dari input sebelumnya
+    fgets(startingCity, MAX_LEN_STRING, stdin);
+    startingCity[strcspn(startingCity, "\n")] = '\0';
+
 
     // Cari index dari kota yang akan dicari
     int startIndex = find_city_index(cities, jumlah_kota, startingCity);
