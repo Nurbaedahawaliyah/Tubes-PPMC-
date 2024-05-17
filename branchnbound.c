@@ -41,7 +41,8 @@ Node* input_file() {
 
     char file_name[MAX_LEN_STRING];
     printf("Masukkan File Map: ");
-    scanf("%s", file_name);
+    fgets(file_name, MAX_LEN_STRING, stdin);
+    file_name[strcspn(file_name, "\n")] = 0; // Menghilangkan karakter newline
 
     FILE* stream = fopen(file_name, "r");
 
@@ -166,7 +167,8 @@ int main(void) {
     // Handling case jika kota start tidak ada
     char startingCity[MAX_LEN_STRING];
     printf("Enter starting point: ");
-    scanf("%s", startingCity);
+    fgets(startingCity, MAX_LEN_STRING, stdin);
+    startingCity[strcspn(startingCity, "\n")] = 0; // Menghilangkan karakter newline
 
     int startIndex = find_city_index(cities, numCities, startingCity);
     if (startIndex == -1) {
